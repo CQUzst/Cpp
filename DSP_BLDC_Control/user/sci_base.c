@@ -36,7 +36,7 @@ void SCI_Init()
 // baud = LSPCLK/8/((BRR+1) 
 // baud @LSPCLK = 37.5MHz (150 MHz SYSCLK)
 	SciaRegs.SCIHBAUD   =0x0000;
-    SciaRegs.SCILBAUD    = 40;    //4-->921600bps  40--> 115200bps ; 18-->256000bps
+    SciaRegs.SCILBAUD    = 4;    //4-->921600bps  40--> 115200bps ; 18-->256000bps
 
     SciaRegs.SCICTL1.bit.SWRESET = 1;     // Relinquish SCI from Reset
     SciaRegs.SCIFFTX.bit.SCIRST=1;
@@ -125,14 +125,10 @@ void int2str(Uint16 n, char *str)
         }
         str[i] = buf[len-i-1];  //把buf数组里的字符拷到字符串
     }
-    if (i == 0 )
-    {
-        str[i] = '-';          //如果是负数，添加一个负号
-    }
 }
 void int32_2str(Uint32 n, char *str)
 {
-    char buf[34] = "";
+    char buf[10] = "";
     int i = 0;
     int len = 0;
     int temp = n;
@@ -156,12 +152,12 @@ void int32_2str(Uint32 n, char *str)
 
 
 void send_number_to_USART(Uint16 num){
-	char str[14];
+	char str[10];
 	int2str(num,str);
 	sciPutString(0,str, 0);
 }
 void send_speed_to_USART(Uint32 num){
-	char str[34];
+	char str[10];
 	int32_2str(num,str);
 	sciPutString(0,str,0);
 }

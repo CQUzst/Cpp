@@ -1,7 +1,3 @@
-/*
- * ePWM.c
- *
- */
 
 #include "DSP28x_Project.h"     // Device Headerfile and Examples Include File
 #include "HK_all_include.h"
@@ -10,16 +6,37 @@ interrupt void main_isr(void);//PWM中断函数，主中断函数
 
 Mark_Para Mark; //电机状态等变量
 Uint16 Current_MOSFET_State;  //PWM两两相通时，记录MOS开通状态
-int tempIsum=0;
+int tempIsum=2300;
+int filter[6]={2300};
+
+
+// 获得三个数中的中间数
+int getAverage(int *a,int len){
+	int sum=0,max=0,min=10000,i;
+	for(i=0;i<len;i++)
+	{
+		sum+=a[i];
+		if(max<a[i])
+			max=a[i];
+		if(min>a[i])
+			min=a[i];
+	}
+	sum=sum-max-min;
+	int ave=sum/(len-2);
+	return ave;
+}
+
+
+
 //-------------------------------------------------------------------------
 //驱动板的 使能引脚 初始化
 //##########################################################################
 void Gpio_IPM_Init(void)
 {
 	EALLOW;
-		oENIPMMUX = 0;
-		oENIPMDIR = 1;
-		oENSET();
+	oENIPMMUX = 0;
+	oENIPMDIR = 1;
+	oENSET();
 	EDIS;
 }
 
@@ -63,13 +80,13 @@ Uint16 FWHall6[]=       {0,6,2,1,4,5,3,0};//---F
 //##########################################################################
 void MOS_HX(Uint16 *HallState)
 {
-  if(Mark.Status_Bits.MotorState != M_STOP )
+	if(Mark.Status_Bits.MotorState != M_STOP )
 	{
 		switch(HallEncode.HallType)
 		{
-			case M_CW:		pfnFW[FWHall1[*HallState]](); break;
-			case M_CCW:		pfnFW[FWHall4[*HallState]](); break;
-			default:break;
+		case M_CW:		pfnFW[FWHall1[*HallState]](); break;
+		case M_CCW:		pfnFW[FWHall4[*HallState]](); break;
+		default:break;
 		}
 	}
 }
@@ -88,11 +105,11 @@ void SetPWMVal(int PWMval)
 
 		EALLOW;
 		EPwm1Regs.CMPA.half.CMPA = REG_PWM_Val;
-//		EPwm1Regs.CMPB =REG_PWM_Val;
+		//		EPwm1Regs.CMPB =REG_PWM_Val;
 		EPwm2Regs.CMPA.half.CMPA = REG_PWM_Val;
-//		EPwm2Regs.CMPB =REG_PWM_Val;
+		//		EPwm2Regs.CMPB =REG_PWM_Val;
 		EPwm3Regs.CMPA.half.CMPA = REG_PWM_Val;
-//		EPwm3Regs.CMPB =REG_PWM_Val;
+		//		EPwm3Regs.CMPB =REG_PWM_Val;
 		EDIS;
 	}
 }
@@ -108,8 +125,8 @@ void printfHall(Uint16 hallR)
 	{
 		hallR = HallEncode.HallState;//60° 6个数 顺时针264513 一圈36个数
 		//printf("\r\nH->%x",HallEncode.HallState);
-//		Uint16 hallNumber=hallR;
-//		send_number_to_USART(hallNumber);
+		//		Uint16 hallNumber=hallR;
+		//		send_number_to_USART(hallNumber);
 		hallLast = hallR;
 	}
 }
@@ -120,21 +137,21 @@ void printfHall(Uint16 hallR)
 //在试验场景下，故这里将清除中断标识取消
 __interrupt void epwm1_tzint_isr(void)
 {
-//	char i;
-//	volatile struct EPWM_REGS *PWMDef[] = {&EPwm1Regs,&EPwm2Regs,&EPwm3Regs};
-//
-//	EALLOW;
-//	for(i=0;i<3;i++)
-//	{
-//		PWMDef[i]->TZCLR.bit.OST = 1;//手动清除中断标识
-//		PWMDef[i]->TZCLR.bit.INT = 1;
-//	}
-//	EDIS;
+	//	char i;
+	//	volatile struct EPWM_REGS *PWMDef[] = {&EPwm1Regs,&EPwm2Regs,&EPwm3Regs};
+	//
+	//	EALLOW;
+	//	for(i=0;i<3;i++)
+	//	{
+	//		PWMDef[i]->TZCLR.bit.OST = 1;//手动清除中断标识
+	//		PWMDef[i]->TZCLR.bit.INT = 1;
+	//	}
+	//	EDIS;
 
-// 这里可以添加，  TZ触发后，控制器需要做的事情
+	// 这里可以添加，  TZ触发后，控制器需要做的事情
 
-//   printf("\r\n\r\nTZ1 interrupt~~~");
-   PieCtrlRegs.PIEACK.all = PIEACK_GROUP2;
+	//   printf("\r\n\r\nTZ1 interrupt~~~");
+	PieCtrlRegs.PIEACK.all = PIEACK_GROUP2;
 }
 
 //###########################################################################
@@ -142,11 +159,11 @@ __interrupt void epwm1_tzint_isr(void)
 //---------------------------------------------------------------------------
 void Motor_TzGpioInit(void)
 {
-   EALLOW;
-		GpioCtrlRegs.GPAPUD.bit.GPIO12 = 0;    // Enable pull-up on GPIO12 (TZ1)
-		GpioCtrlRegs.GPAQSEL1.bit.GPIO12 = 3;  // Asynch input GPIO12 (TZ1)
-		GpioCtrlRegs.GPAMUX1.bit.GPIO12 = 1;   // Configure GPIO12 as TZ1
-   EDIS;
+	EALLOW;
+	GpioCtrlRegs.GPAPUD.bit.GPIO12 = 0;    // Enable pull-up on GPIO12 (TZ1)
+	GpioCtrlRegs.GPAQSEL1.bit.GPIO12 = 3;  // Asynch input GPIO12 (TZ1)
+	GpioCtrlRegs.GPAMUX1.bit.GPIO12 = 1;   // Configure GPIO12 as TZ1
+	EDIS;
 }
 
 
@@ -211,32 +228,32 @@ void InitEPWM_Hpwm_Lopen(void)
 	for(i=0;i<3;i++)
 	{
 		EALLOW;
-			//公式 T_PWM = 2 x TBPRD x T_TBCLK
-			PWMDef[i]->TBPRD = PWM_FRE;	    //频率  20K
-			PWMDef[i]->CMPA.half.CMPA = 0;  //占空比
-			PWMDef[i]->TBPHS.half.TBPHS = 0x0000;            // Phase is 0
-			PWMDef[i]->TBCTR = 0x0000;                       // Clear counter
+		//公式 T_PWM = 2 x TBPRD x T_TBCLK
+		PWMDef[i]->TBPRD = PWM_FRE;	    //频率  20K
+		PWMDef[i]->CMPA.half.CMPA = 0;  //占空比
+		PWMDef[i]->TBPHS.half.TBPHS = 0x0000;            // Phase is 0
+		PWMDef[i]->TBCTR = 0x0000;                       // Clear counter
 
-			// Setup TBCLK
-			PWMDef[i]->TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN; // Count up down
-			PWMDef[i]->TBCTL.bit.PHSEN = TB_ENABLE;        //  Allow each timer to be sync'ed
-			PWMDef[i]->TBCTL.bit.SYNCOSEL = TB_SYNC_DISABLE;
-			PWMDef[i]->TBCTL.bit.HSPCLKDIV = TB_DIV1;       // Clock ratio to SYSCLKOUT;
-			PWMDef[i]->TBCTL.bit.CLKDIV =    TB_DIV1;
+		// Setup TBCLK
+		PWMDef[i]->TBCTL.bit.CTRMODE = TB_COUNT_UPDOWN; // Count up down
+		PWMDef[i]->TBCTL.bit.PHSEN = TB_ENABLE;        //  Allow each timer to be sync'ed
+		PWMDef[i]->TBCTL.bit.SYNCOSEL = TB_SYNC_DISABLE;
+		PWMDef[i]->TBCTL.bit.HSPCLKDIV = TB_DIV1;       // Clock ratio to SYSCLKOUT;
+		PWMDef[i]->TBCTL.bit.CLKDIV =    TB_DIV1;
 
-			PWMDef[i]->CMPCTL.bit.SHDWAMODE = CC_SHADOW;
-			PWMDef[i]->CMPCTL.bit.SHDWBMODE = CC_SHADOW;
-			PWMDef[i]->CMPCTL.bit.LOADAMODE = CC_CTR_ZERO;
-			PWMDef[i]->CMPCTL.bit.LOADBMODE = CC_CTR_ZERO;
+		PWMDef[i]->CMPCTL.bit.SHDWAMODE = CC_SHADOW;
+		PWMDef[i]->CMPCTL.bit.SHDWBMODE = CC_SHADOW;
+		PWMDef[i]->CMPCTL.bit.LOADAMODE = CC_CTR_ZERO;
+		PWMDef[i]->CMPCTL.bit.LOADBMODE = CC_CTR_ZERO;
 
-			//TZ1连接到IPM的报警输出引脚
-			PWMDef[i]->TZSEL.bit.OSHT1 = 1;
-			PWMDef[i]->TZEINT.bit.OST = 1;         //TZ中断
-			PWMDef[i]->TZCTL.bit.TZA = TZ_FORCE_LO;//TZ触发后，上管输出低电平
-			PWMDef[i]->TZCTL.bit.TZB = TZ_FORCE_LO;//TZ触发后，下管输出低电平
+		//TZ1连接到IPM的报警输出引脚
+		PWMDef[i]->TZSEL.bit.OSHT1 = 1;
+		PWMDef[i]->TZEINT.bit.OST = 1;         //TZ中断
+		PWMDef[i]->TZCTL.bit.TZA = TZ_FORCE_LO;//TZ触发后，上管输出低电平
+		PWMDef[i]->TZCTL.bit.TZB = TZ_FORCE_LO;//TZ触发后，下管输出低电平
 
-			PWMDef[i]->DBCTL.all = 0;// Init Dead-Band Generator Control Register for EPWM1-EPWM3
-			PWMDef[i]->PCCTL.all = 0;// Init PWM Chopper Control Register for EPWM1-EPWM3
+		PWMDef[i]->DBCTL.all = 0;// Init Dead-Band Generator Control Register for EPWM1-EPWM3
+		PWMDef[i]->PCCTL.all = 0;// Init PWM Chopper Control Register for EPWM1-EPWM3
 		EDIS;
 	}
 
@@ -244,28 +261,28 @@ void InitEPWM_Hpwm_Lopen(void)
 	SysCtrlRegs.PCLKCR0.bit.TBCLKSYNC =1;
 	EDIS;
 
-//#ifdef PWMADC
-//	   EPwm1Regs.ETSEL.bit.SOCAEN	= 1;		// Enable SOC on A group
-//	   EPwm1Regs.ETSEL.bit.SOCASEL	= ET_CTR_PRD;		//
-//	   EPwm1Regs.ETPS.bit.SOCAPRD 	= 1;		// Generate pulse on 1st event
-//
-//	   EPwm1Regs.ETSEL.bit.SOCBEN	= 1;		// Enable SOC on B group
-//	   EPwm1Regs.ETSEL.bit.SOCBSEL	= ET_CTR_PRD;		//
-//	   EPwm1Regs.ETPS.bit.SOCBPRD 	= 1;		// Generate pulse on 1st event
-//#endif
+	//#ifdef PWMADC
+	//	   EPwm1Regs.ETSEL.bit.SOCAEN	= 1;		// Enable SOC on A group
+	//	   EPwm1Regs.ETSEL.bit.SOCASEL	= ET_CTR_PRD;		//
+	//	   EPwm1Regs.ETPS.bit.SOCAPRD 	= 1;		// Generate pulse on 1st event
+	//
+	//	   EPwm1Regs.ETSEL.bit.SOCBEN	= 1;		// Enable SOC on B group
+	//	   EPwm1Regs.ETSEL.bit.SOCBSEL	= ET_CTR_PRD;		//
+	//	   EPwm1Regs.ETPS.bit.SOCBPRD 	= 1;		// Generate pulse on 1st event
+	//#endif
 
-	   Motor_TzGpioInit();  //GPIO12 作为 TZ1 的IO初始化
-	   EALLOW;
-	   PieVectTable.EPWM1_TZINT = &epwm1_tzint_isr;
-//	   PieVectTable.EPWM2_TZINT = &epwm2_tzint_isr;
-//	   PieVectTable.EPWM3_TZINT = &epwm3_tzint_isr;
-	   EDIS;
+	Motor_TzGpioInit();  //GPIO12 作为 TZ1 的IO初始化
+	EALLOW;
+	PieVectTable.EPWM1_TZINT = &epwm1_tzint_isr;
+	//	   PieVectTable.EPWM2_TZINT = &epwm2_tzint_isr;
+	//	   PieVectTable.EPWM3_TZINT = &epwm3_tzint_isr;
+	EDIS;
 
-		//TZ中断
-		PieCtrlRegs.PIEIER2.bit.INTx1 = 1;
-//		PieCtrlRegs.PIEIER2.bit.INTx2 = 1;
-//		PieCtrlRegs.PIEIER2.bit.INTx3 = 1;
-		IER |= M_INT2;
+	//TZ中断
+	PieCtrlRegs.PIEIER2.bit.INTx1 = 1;
+	//		PieCtrlRegs.PIEIER2.bit.INTx2 = 1;
+	//		PieCtrlRegs.PIEIER2.bit.INTx3 = 1;
+	IER |= M_INT2;
 }
 
 
@@ -280,29 +297,6 @@ void HallNull()
 //---------------------------------------------------------------------------
 void HALL_0x12(void)
 {
-#ifdef PWM_HALL_FIND
-	EPwm3Regs.AQCTLB.bit.CBU = AQ_SET;
-	EPwm3Regs.AQCTLB.bit.CBD = AQ_CLEAR;
-
-	EPwm1Regs.AQCSFRC.bit.CSFA=2;
-	EPwm1Regs.AQCSFRC.bit.CSFB=1;
-	EPwm2Regs.AQCSFRC.bit.CSFA=1;
-	EPwm2Regs.AQCSFRC.bit.CSFB=1;
-	EPwm3Regs.AQCSFRC.bit.CSFA=1;
-	EPwm3Regs.AQCSFRC.bit.CSFB=0;
-
-	EPwm1Regs.DBCTL.bit.OUT_MODE =3;//AB DB
-	EPwm1Regs.DBCTL.bit.POLSEL =0;  //AB NO inverted
-	EPwm1Regs.DBCTL.bit.IN_MODE =2; //DB from PWM AB
-
-	EPwm2Regs.DBCTL.bit.OUT_MODE =3;//AB DB
-	EPwm2Regs.DBCTL.bit.POLSEL =0;  //AB NO inverted
-	EPwm2Regs.DBCTL.bit.IN_MODE =2; //DB from PWM AB
-
-	EPwm3Regs.DBCTL.bit.OUT_MODE =3;
-	EPwm3Regs.DBCTL.bit.POLSEL =0;
-	EPwm3Regs.DBCTL.bit.IN_MODE =2;
-#else
 	EPwm1Regs.AQCSFRC.bit.CSFA=0;//AQ强制输出失效
 	EPwm1Regs.AQCTLA.bit.CAU = AQ_SET;
 	EPwm1Regs.AQCTLA.bit.CAD = AQ_CLEAR;
@@ -314,36 +308,13 @@ void HALL_0x12(void)
 
 	EPwm3Regs.AQCSFRC.bit.CSFA=1;
 	EPwm3Regs.AQCSFRC.bit.CSFB=2;//AQ强制输出高电平
-#endif
+
 	Current_MOSFET_State = 0;
 }
 
 
 void HALL_0x23(void)
 {
-#ifdef PWM_HALL_FIND
-	EPwm1Regs.AQCSFRC.bit.CSFA=1;
-	EPwm1Regs.AQCSFRC.bit.CSFB=1;
-	EPwm3Regs.AQCSFRC.bit.CSFA=1;
-	EPwm3Regs.AQCSFRC.bit.CSFB=2;
-
-	EPwm1Regs.DBCTL.bit.OUT_MODE =3;//AB DB
-	EPwm1Regs.DBCTL.bit.POLSEL =0;  //AB NO inverted
-	EPwm1Regs.DBCTL.bit.IN_MODE =2; //DB from PWM AB
-
-	EPwm3Regs.DBCTL.bit.OUT_MODE =3;
-	EPwm3Regs.DBCTL.bit.POLSEL =0;
-	EPwm3Regs.DBCTL.bit.IN_MODE =2;
-
-
-	EPwm2Regs.AQCSFRC.bit.CSFA=0;//AQ强制输出失效
-	EPwm2Regs.AQCTLA.bit.CAU = AQ_SET;
-	EPwm2Regs.AQCTLA.bit.CAD = AQ_CLEAR;
-	EPwm2Regs.DBCTL.bit.IN_MODE =  DBA_ALL;         //S5 = 0; S4 = 0
-	EPwm2Regs.DBCTL.bit.OUT_MODE = DB_FULL_ENABLE;	//S1 = 1; S0 = 1  DB_enabled
-	EPwm2Regs.DBCTL.bit.POLSEL = DB_ACTV_HIC; 		//S3 = 1; S2 = 0
-#else
-
 	EPwm1Regs.AQCSFRC.bit.CSFA=1;
 	EPwm1Regs.AQCSFRC.bit.CSFB=1;
 
@@ -355,35 +326,12 @@ void HALL_0x23(void)
 
 	EPwm3Regs.AQCSFRC.bit.CSFA=1;
 	EPwm3Regs.AQCSFRC.bit.CSFB=2;//AQ强制输出高电平
-#endif
+
 	Current_MOSFET_State = 1;
-  }
+}
 
 void HALL_0x34(void)
 {
-#ifdef PWM_HALL_FIND
-	EPwm1Regs.AQCTLB.bit.CBU = AQ_SET;
-	EPwm1Regs.AQCTLB.bit.CBD = AQ_CLEAR;
-
-	EPwm1Regs.AQCSFRC.bit.CSFA=1;
-	EPwm1Regs.AQCSFRC.bit.CSFB=0;
-	EPwm2Regs.AQCSFRC.bit.CSFA=2;
-	EPwm2Regs.AQCSFRC.bit.CSFB=1;
-	EPwm3Regs.AQCSFRC.bit.CSFA=1;
-	EPwm3Regs.AQCSFRC.bit.CSFB=1;
-
-	EPwm1Regs.DBCTL.bit.OUT_MODE =3;//AB DB
-	EPwm1Regs.DBCTL.bit.POLSEL =0;  //AB NO inverted
-	EPwm1Regs.DBCTL.bit.IN_MODE =2; //DB from PWM AB
-
-	EPwm2Regs.DBCTL.bit.OUT_MODE =3;//AB DB
-	EPwm2Regs.DBCTL.bit.POLSEL =0;  //AB NO inverted
-	EPwm2Regs.DBCTL.bit.IN_MODE =2; //DB from PWM AB
-
-	EPwm3Regs.DBCTL.bit.OUT_MODE =3;
-	EPwm3Regs.DBCTL.bit.POLSEL =0;
-	EPwm3Regs.DBCTL.bit.IN_MODE =2;
-#else
 	EPwm1Regs.AQCSFRC.bit.CSFA=1;
 	EPwm1Regs.AQCSFRC.bit.CSFB=2;//AQ强制输出高电平
 
@@ -395,33 +343,12 @@ void HALL_0x34(void)
 
 	EPwm3Regs.AQCSFRC.bit.CSFA=1;
 	EPwm3Regs.AQCSFRC.bit.CSFB=1;
-#endif
+
 	Current_MOSFET_State  = 2;
-  }
+}
 
 void HALL_0x45(void)
 {
-#ifdef PWM_HALL_FIND
-	EPwm1Regs.AQCSFRC.bit.CSFA=1;
-	EPwm1Regs.AQCSFRC.bit.CSFB=2;
-	EPwm2Regs.AQCSFRC.bit.CSFA=1;
-	EPwm2Regs.AQCSFRC.bit.CSFB=1;
-
-	EPwm1Regs.DBCTL.bit.OUT_MODE =3;//AB DB
-	EPwm1Regs.DBCTL.bit.POLSEL =0;  //AB NO inverted
-	EPwm1Regs.DBCTL.bit.IN_MODE =2; //DB from PWM AB
-
-	EPwm2Regs.DBCTL.bit.OUT_MODE =3;//AB DB
-	EPwm2Regs.DBCTL.bit.POLSEL =0;  //AB NO inverted
-	EPwm2Regs.DBCTL.bit.IN_MODE =2; //DB from PWM AB
-
-	EPwm3Regs.AQCSFRC.bit.CSFA=0;//AQ强制输出失效
-	EPwm3Regs.AQCTLA.bit.CAU = AQ_SET;
-	EPwm3Regs.AQCTLA.bit.CAD = AQ_CLEAR;
-	EPwm3Regs.DBCTL.bit.IN_MODE =  DBA_ALL;         //S5 = 0; S4 = 0
-	EPwm3Regs.DBCTL.bit.OUT_MODE = DB_FULL_ENABLE;	//S1 = 1; S0 = 1  DB_enabled
-	EPwm3Regs.DBCTL.bit.POLSEL = DB_ACTV_HIC; 		//S3 = 1; S2 = 0
-#else
 	EPwm1Regs.AQCSFRC.bit.CSFA=1;
 	EPwm1Regs.AQCSFRC.bit.CSFB=2;//AQ强制输出高电平
 
@@ -433,35 +360,12 @@ void HALL_0x45(void)
 	EPwm3Regs.AQCTLA.bit.CAD = AQ_CLEAR;
 	EPwm3Regs.CMPA.half.CMPA = MotorADJ.PWM_Val;
 	EPwm3Regs.AQCSFRC.bit.CSFB=1;//AQ强制输出低电平
-#endif
+
 	Current_MOSFET_State  = 3;
-  }
+}
 
 void HALL_0x56(void)
 {
-#ifdef PWM_HALL_FIND
-	EPwm2Regs.AQCTLB.bit.CBU = AQ_SET;
-	EPwm2Regs.AQCTLB.bit.CBD = AQ_CLEAR;
-
-	EPwm1Regs.AQCSFRC.bit.CSFA=1;
-	EPwm1Regs.AQCSFRC.bit.CSFB=1;
-	EPwm2Regs.AQCSFRC.bit.CSFA=1;
-	EPwm2Regs.AQCSFRC.bit.CSFB=0;
-	EPwm3Regs.AQCSFRC.bit.CSFA=2;
-	EPwm3Regs.AQCSFRC.bit.CSFB=1;
-
-	EPwm1Regs.DBCTL.bit.OUT_MODE =3;//AB DB
-	EPwm1Regs.DBCTL.bit.POLSEL =0;  //AB NO inverted
-	EPwm1Regs.DBCTL.bit.IN_MODE =2; //DB from PWM AB
-
-	EPwm2Regs.DBCTL.bit.OUT_MODE =3;//AB DB
-	EPwm2Regs.DBCTL.bit.POLSEL =0;  //AB NO inverted
-	EPwm2Regs.DBCTL.bit.IN_MODE =2; //DB from PWM AB
-
-	EPwm3Regs.DBCTL.bit.OUT_MODE =3;
-	EPwm3Regs.DBCTL.bit.POLSEL =0;
-	EPwm3Regs.DBCTL.bit.IN_MODE =2;
-#else
 	EPwm1Regs.AQCSFRC.bit.CSFA=1;
 	EPwm1Regs.AQCSFRC.bit.CSFB=1;
 
@@ -473,33 +377,12 @@ void HALL_0x56(void)
 	EPwm3Regs.AQCTLA.bit.CAD = AQ_CLEAR;
 	EPwm3Regs.CMPA.half.CMPA = MotorADJ.PWM_Val;
 	EPwm3Regs.AQCSFRC.bit.CSFB=1;//AQ强制输出低电平
-#endif
+
 	Current_MOSFET_State = 4;
 }
 
 void HALL_0x61(void) //UH PWM  VL HI
 {
-#ifdef PWM_HALL_FIND
-//	EPwm2Regs.AQCSFRC.bit.CSFA=1;
-//	EPwm2Regs.AQCSFRC.bit.CSFB=2;
-//	EPwm3Regs.AQCSFRC.bit.CSFA=1;
-//	EPwm3Regs.AQCSFRC.bit.CSFB=1;
-//
-//	EPwm2Regs.DBCTL.bit.OUT_MODE =3;//AB DB
-//	EPwm2Regs.DBCTL.bit.POLSEL =0;  //AB NO inverted
-//	EPwm2Regs.DBCTL.bit.IN_MODE =2; //DB from PWM AB
-//
-//	EPwm3Regs.DBCTL.bit.OUT_MODE =3;
-//	EPwm3Regs.DBCTL.bit.POLSEL =0;
-//	EPwm3Regs.DBCTL.bit.IN_MODE =2;
-//
-//	EPwm1Regs.AQCSFRC.bit.CSFA=0;//AQ强制输出失效
-//	EPwm1Regs.AQCTLA.bit.CAU = AQ_SET;
-//	EPwm1Regs.AQCTLA.bit.CAD = AQ_CLEAR;
-//	EPwm1Regs.DBCTL.bit.IN_MODE =  DBA_ALL;         //S5 = 0; S4 = 0
-//	EPwm1Regs.DBCTL.bit.OUT_MODE = DB_FULL_ENABLE;	//S1 = 1; S0 = 1  DB_enabled
-//	EPwm1Regs.DBCTL.bit.POLSEL = DB_ACTV_HIC; 		//S3 = 1; S2 = 0
-#else
 	EPwm1Regs.AQCSFRC.bit.CSFA=0;//AQ强制输出失效
 	EPwm1Regs.AQCTLA.bit.CAU = AQ_SET;
 	EPwm1Regs.AQCTLA.bit.CAD = AQ_CLEAR;//
@@ -511,35 +394,23 @@ void HALL_0x61(void) //UH PWM  VL HI
 
 	EPwm3Regs.AQCSFRC.bit.CSFA=1;
 	EPwm3Regs.AQCSFRC.bit.CSFB=1;
-#endif
+
 	Current_MOSFET_State  = 5;
 }
 
 //电机停止时，三个上管关闭，三个下管开启
 void openLowBrige(void)
 {
-EALLOW;
+	EALLOW;
 	EPwm1Regs.AQCSFRC.bit.CSFA=1;
 	EPwm1Regs.AQCSFRC.bit.CSFB=2;
 	EPwm2Regs.AQCSFRC.bit.CSFA=1;
-    EPwm2Regs.AQCSFRC.bit.CSFB=2;
+	EPwm2Regs.AQCSFRC.bit.CSFB=2;
 	EPwm3Regs.AQCSFRC.bit.CSFA=1;
 	EPwm3Regs.AQCSFRC.bit.CSFB=2;
-EDIS;
+	EDIS;
 }
 
-
-//-------------------------------------------------------------------------
-//ChSel[0]=2;		// A2--->IfbSum
-//ChSel[1]=1;		// ChSelect: ADC A1-> Phase A Current
-//ChSel[2]=9;		// ChSelect: ADC B1-> Phase B Current
-//ChSel[3]=3;		// ChSelect: ADC A3-> Phase C Current
-//ChSel[4]=15;	// ChSelect: ADC B7-> Phase A Voltage
-//ChSel[5]=14;	// ChSelect: ADC B6-> Phase B Voltage
-//ChSel[6]=12;	// ChSelect: ADC B4-> Phase C Voltage
-//ChSel[7]=7;		// ChSelect: ADC A7-> DC Bus  Voltage
-//ChSel[8]=6;		// A6 -> RG
-//ChSel[9]=0;		// A0 -> IPM V_Tsens
 //##########################################################################
 #pragma CODE_SECTION(main_isr,"ramfuncs"); //设置中断服务函数在RAM里运行，提供效率
 //PWM中断服务函数，
@@ -548,12 +419,24 @@ EDIS;
 interrupt void  main_isr(void)
 {
 	int tempIdc;
+
 	//结果数据缓冲器存储的转换数据为左对齐，故需要右移4位
 	intAD_Vol[AD_ISUM] = AdcRegs.ADCRESULT0>>4;
+
+//	filter[0]=filter[1];
+//	filter[1]=filter[2];
+//	filter[2]=filter[3];
+//	filter[3]=filter[4];
+//	filter[4]=filter[5];
+//	filter[5]=intAD_Vol[AD_ISUM];
+//	intAD_Vol[AD_ISUM]=getAverage(filter,6);
+//	if(intAD_Vol[AD_ISUM]>2800||intAD_Vol[AD_ISUM]<2000)
+//		intAD_Vol[AD_ISUM]=tempIsum;
+//	tempIsum=intAD_Vol[AD_ISUM];
+
 	intAD_Vol[AD_RG] = AdcRegs.ADCRESULT1>>4;
 	intAD_Vol[AD_TMP] = AdcRegs.ADCRESULT2>>4;
 	intAD_Vol[3]=AdcRegs.ADCRESULT3>>4;
-	tempIsum=intAD_Vol[AD_ISUM];
 
 	//电流闭环控制
 	if(Mark.Status_Bits.Idc_Loop_Flag ==1 )
@@ -562,10 +445,10 @@ interrupt void  main_isr(void)
 		// 电流参考值，在 RgSetSpeed 函数中由驱动板可调电阻给定
 		iptr->FbkPoint = intAD_Vol[AD_ISUM] - 2048;
 		if( iptr->FbkPoint <0 ) iptr->FbkPoint  = tempIdc; // Eliminate negative values
-	    //iptr->SetPoint 在 RgSetSpeed 函数中给定
-	    LocPIDCalc(iptr,1); //电机电流PID调整
+		//iptr->SetPoint 在 RgSetSpeed 函数中给定
+		LocPIDCalc(iptr,1); //电机电流PID调整
 
-	    MotorADJ.fIdcOut = iptr->Fout;
+		MotorADJ.fIdcOut = iptr->Fout;
 		SetPWMVal((Uint16) MotorADJ.fIdcOut); //PWM输出
 	}
 	EPwm1Regs.ETCLR.bit.INT = 1;

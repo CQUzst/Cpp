@@ -117,9 +117,9 @@ void main(void)
 		{
 			//			sciPutString(1,"Ic=",0);
 			//			send_number_to_USART(intAD_Vol[3]);
-			//输出电流和
-			sciPutString(1,"Isum=",0);
-			send_number_to_USART(intAD_Vol[0]);
+			////输出电流和
+			//			sciPutString(1,"Isum=",0);
+			//			send_number_to_USART(intAD_Vol[0]);
 			timer0Base.Mark_Para.Status_Bits.OnemsdFlag =0;//清除置位
 			//0.2s（200ms）任务
 			if( timer0Base.msCounter > 200)//200
@@ -135,16 +135,18 @@ void main(void)
 
 				//数码管显示内容，来自于 scanKey() 函数控制S2 S3 S4
 				TM1650_SEG_show(SEG_DIG4_Cmd,*PtrSegType);
-				if(Mark.Status_Bits.DrawLineFlag ==1 )
-					DrawLine();  //串口上传参数，配合图形软件使用 （建议周期调用）
+
 			}
 		}
 
 		//2个重要的电机控制 主函数
 		//    	MotorControl(); 在timer0_base.c 的定时器0中断
 		//    	main_isr();     ePWM.c  的 20K PWM中断服务函数
-
 		decodeUart();//串口接收来自PC发送的命令
+
+		if(Mark.Status_Bits.DrawLineFlag ==1 )
+			DrawLine();  //串口上传参数，配合图形软件使用 （建议周期调用）
+
 	}
 }									
 
@@ -188,8 +190,7 @@ void InitADC()
 	ChSel[5]=14;	// ChSelect: ADC B6-> Phase B Voltage
 	ChSel[6]=12;	// ChSelect: ADC B4-> Phase C Voltage
 	ChSel[7]=7;		// ChSelect: ADC A7-> DC Bus  Voltage
-	//	ChSel[8]=6;		// A6 -> RG
-	//	ChSel[9]=0;		// A0 -> IPM V_Tsens
+
 
 
 	ADC_MACRO_INIT_Dual(ChSel,ACQPS);//n通道ADC初始化，MotorA

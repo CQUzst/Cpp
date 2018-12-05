@@ -2,7 +2,7 @@
 #include "DSP28x_Project.h"     // Device Headerfile and Examples Include File
 #include "HK_all_include.h"
 
-Uint16 OpenLoopPWMval=0;
+Uint16 OpenLoopPWMval=100;
 PI_CONTROLLER pid1_idc = PI_CONTROLLER_DEFAULTS;
 PI_CONTROLLER pid1_spd = PI_CONTROLLER_DEFAULTS;
 
@@ -15,7 +15,7 @@ SPEED_MEAS_CAP speed1 = SPEED_MEAS_CAP_DEFAULTS;
 
 Uint16 hallFindCnt=0;//查找HALL与UVW相位关系， 绕组给定PWM时间/ ms单位
 int iResVal;        //可调电阻采样的AD值
-
+double Ptemp;
 //串口上传的2个定义变量
 Uint16 CRCcode;
 char CmdT[20];
@@ -34,24 +34,26 @@ DEF_Motor_REG  MotorADJ={0}; //定义电机控制相关变量
 void RgSetRef(void)
 {
 	static int temp1=0,temp2=0,temp3=0;
+	if(Mark.Status_Bits.TestMode == M_OPENLOOP)
+		OpenLoopPWMval=(int)intAD_Vol[AD_RG]*0.909;
 	if((Mark.Status_Bits.TestMode == M_SPEEDLOOP)||(Mark.Status_Bits.TestMode ==M_CURRRENTLOOP))
 	{
 		iResVal = intAD_Vol[AD_RG]*0.909;  //28335的ADC量程3V缩放 量程3.3V
 		if(Mark.Status_Bits.MotorState != M_ACCDOWN)
 		{
-			temp1 = iResVal;
-
-			//设定电流参考值
-			iptr->SetPoint  = iResVal;
-			CLAMP(iptr->SetPoint,MIN_IDC,MAX_IDC);
-
-			//设定速度参考值
-			temp3 = temp1 - temp2 ;
-			if((temp3>50)||(temp3<-50))//大于或者小于 50 的范围时，进行设定速度的调整
-			{
-				temp2 = temp1;
-				MotorADJ.Set_Speed = temp1 -temp1 % 50;//设定速度的取整
-			}
+//			temp1 = iResVal;
+//
+//			//设定电流参考值
+//			iptr->SetPoint  = iResVal;
+//			CLAMP(iptr->SetPoint,MIN_IDC,MAX_IDC);
+//
+//			//设定速度参考值
+//			temp3 = temp1 - temp2 ;
+//			if((temp3>50)||(temp3<-50))//大于或者小于 50 的范围时，进行设定速度的调整
+//			{
+//				temp2 = temp1;
+//				MotorADJ.Set_Speed = temp1 -temp1 % 50;//设定速度的取整
+//			}
 		}
 		else  //减速过程，设置参考值等于0
 		{
@@ -92,7 +94,7 @@ void IncPIDInit(void)
 	iptr->LastError = 0; //Error[-1]
 	iptr->PrevError = 0; //Error[-2]
 	iptr->Proportion = 2; //比例常数 Proportional Const
-	iptr->Integral = 0.1; //积分常数 Integral Const
+	iptr->Integral = 0.01; //积分常数 Integral Const
 	iptr->Derivative = 0; //微分常数 Derivative Const
 	iptr->SetPoint = 0;
 	iptr->FbkPoint = 0;
@@ -230,17 +232,26 @@ void DrawLine()
 	scia_xmit(CmdT[0]);//发送通道数
 
 	//设定速度
-	HexPrintf(MotorADJ.Set_Speed);//timer0Base.msCounter
-	CmdT[1] = (MotorADJ.Set_Speed)>>8;
-	CmdT[2] = (MotorADJ.Set_Speed)&0XFF;
+	//	HexPrintf(MotorADJ.Set_Speed);//timer0Base.msCounter
+	//	CmdT[1] = (MotorADJ.Set_Speed)>>8;
+	//	CmdT[2] = (MotorADJ.Set_Speed)&0XFF;
+	HexPrintf(intAD_Vol[0]);
+	CmdT[1] = (intAD_Vol[0])>>8;
+	CmdT[2] = (intAD_Vol[0])&0XFF;
 
 	//实时速度
-	HexPrintf(MotorADJ.Now_Speed);
-	CmdT[3] = (MotorADJ.Now_Speed)>>8;
-	CmdT[4] = (MotorADJ.Now_Speed)&0XFF;
+	Uint16 showSpeed=MotorADJ.Now_Speed+1000;
+	HexPrintf(showSpeed);
+	CmdT[3] = (showSpeed)>>8;
+	CmdT[4] = (showSpeed)&0XFF;
 
 	//速度PID闭环，输出结果给PWM
-	temp = sptr->Fout;
+	//	temp = sptr->Fout;
+	//	HexPrintf(temp);
+	//	CmdT[5] = (temp)>>8;
+	//	CmdT[6] = (temp)&0XFF;
+
+	temp=intAD_Vol[3];
 	HexPrintf(temp);
 	CmdT[5] = (temp)>>8;
 	CmdT[6] = (temp)&0XFF;
@@ -337,7 +348,7 @@ void MotorControl(void)
 
 				if(MotorADJ.CloseSPLoopCnt < 10)//P环启动
 				{
-					LocPIDCalc(sptr,0);  //速递闭环PID控制
+					LocPIDCalc(sptr,0);  //速度闭环PID控制
 					MotorADJ.PWM_Float_val = sptr->Fout;
 				}
 				else                           //O环启动之后，再进行PID闭环
@@ -461,6 +472,14 @@ void decodeUart(void)
 				OpenLoopPWMval=tmp;
 				break;
 
+			case 0x06://闭环速度设定
+				temp1 = SCI_Msg.rxData[1];
+				temp2 = SCI_Msg.rxData[2];
+				tmp = 1000*((temp1>>4)%10) + 100*((SCI_Msg.rxData[1]&0x0f)%10) + 10*((temp2>>4)%10) + (SCI_Msg.rxData[2]&0x0f)%10;
+				CLAMP(tmp,10,1000);
+				MotorADJ.Set_Speed=tmp;
+				break;
+
 				//1byte
 			case 0xA0:
 				if(Mark.Status_Bits.MotorState == M_STOP)
@@ -473,17 +492,23 @@ void decodeUart(void)
 
 				//7byte 速度PID参数给定
 			case 0xB1:
+
 				temp1 = SCI_Msg.rxData[1];
-				dTmp = (temp1<<8) + SCI_Msg.rxData[2];
-				sptr->Proportion = dTmp*0.0001; //比例常数 Proportional Const
+				Ptemp = (temp1<<8) + SCI_Msg.rxData[2];
+				sptr->Proportion = Ptemp*0.001; //比例常数 Proportional Const
 
 				temp1 = SCI_Msg.rxData[3];
 				dTmp = (temp1<<8) + SCI_Msg.rxData[4];
 				sptr->Integral =   dTmp*0.0001; //积分常数 Integral Const
 
-				temp1 = SCI_Msg.rxData[5];
-				dTmp = (temp1<<8) + SCI_Msg.rxData[6];
-				sptr->Derivative =  dTmp*0.0001;//微分常数 Derivative Const
+
+				sciPutString(1,"比例常数*1000=",0);
+				send_number_to_USART((Uint16)Ptemp);
+				sciPutString(1,"积分常数*10000=",0);
+				send_number_to_USART((Uint16)dTmp);
+				//				temp1 = SCI_Msg.rxData[5];
+				//				dTmp = (temp1<<8) + SCI_Msg.rxData[6];
+				//				sptr->Derivative =  dTmp*0.0001;//微分常数 Derivative Const
 
 				break;
 
