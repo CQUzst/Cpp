@@ -1,3 +1,3 @@
 # Cpp
-Cpp program etc
+C and Cpp program etc
 
