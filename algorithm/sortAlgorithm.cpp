@@ -1,6 +1,5 @@
 #include <iostream>
-#include <vector>
-#include <algorithm>
+using namespace std;
 
 //冒泡排序 时间复杂度n*n，空间复杂度1
 void bubble_sort (int a[], int n) {
@@ -37,7 +36,7 @@ void insertion_sort(int a[],int n){
     int i,j;
     for(i=0;i<n;++i){
         int tmp=a[i];//每次选择一个元素
-        for(j=i;j>0&&a[j-1]>tmp;--j){//将tmp循环与排序好的元素从大到小比较，将大的元素向后移
+        for(j=i;j-1>=0&&a[j-1]>tmp;--j){//将tmp循环与排序好的元素从大到小比较，将大的元素向后移
             a[j]=a[j-1];
         }
         a[j]=tmp;
@@ -45,15 +44,27 @@ void insertion_sort(int a[],int n){
 }
 
 //希尔排序 插入排序的修改版
+void shellSort(int a[],int n){
+    for(int step=n/2;step>0;step/=2){//逐步减小步长
+        for(int i=step;i<n;++i){//在每个步长间隔里进行插入排序
+            int j=i;
+            int tmp=a[j];
+            for(;j-step>=0&&a[j-step]>tmp;j-=step){
+                a[j]=a[j-step];
+            }
+            a[j]=tmp;
+        }
+    }
+}
 
-using namespace std;
 int main(){
     int a[10]={3,4,7,6,1,2,5,9,8,0};
     int n=sizeof(a)/sizeof(a[0]);
 
     //bubble_sort(a,n);
     //optimized_bubble_sort(a,n);
-    insertion_sort(a,n);
+    //insertion_sort(a,n);
+    shellSort(a,n);
 
     for(int i=0;i<n;++i)
         cout<<a[i]<<" ";
