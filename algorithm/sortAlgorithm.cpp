@@ -119,6 +119,21 @@ void mergeSort(int a[],int left,int right){
     }
 }
 
+/************************选择排序**************************/
+void selectSort(int a[],int n){
+    for(int i=0;i<n-1;i++){//遍历n-1轮，每轮将后面的最小值的下标选出来，和当前位置交换
+        int minN=i;
+        for(int j=i+1;j<n;j++){
+            if(a[j]<a[minN]){
+                minN=j;
+            }
+        }
+        int tmp=a[i];
+        a[i]=a[minN];
+        a[minN]=tmp;
+    }
+
+}
 int main(){
     int a[10]={3,4,7,6,1,2,5,9,8,0};
     //int a[9]={53, 3, 542, 748, 14, 214, 154, 63, 616};
@@ -129,7 +144,9 @@ int main(){
     //insertionSort(a,n);
     //shellSort(a,n);
     //radixSort(a,n);
-    mergeSort(a,0,n-1);
+    //mergeSort(a,0,n-1);
+    selectSort(a,n);
+
 
     for(int i=0;i<n;++i)
         cout<<a[i]<<" ";
