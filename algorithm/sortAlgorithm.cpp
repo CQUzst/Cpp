@@ -132,8 +132,34 @@ void selectSort(int a[],int n){
         a[i]=a[minN];
         a[minN]=tmp;
     }
-
 }
+
+/************************快速排序*************************/
+int partition(int a[],int left,int right){
+    int tmp=a[left];//基准选取第一个位置
+    int i=left+1;
+    int j=right;
+    while(i<=j){
+        while(a[i]<tmp)
+            i++;
+        while(a[j]>tmp)
+            j--;
+        if(i<j)
+            swap(a[i++],a[j--]);
+        else
+            i++;
+    }
+    swap(a[j],a[left]);
+    return j;
+}
+void quickSort(int a[],int left,int right){
+    if(left>=right)
+        return;
+    int p=partition(a,left,right);
+    quickSort(a,left,p-1);
+    quickSort(a,p+1,right);
+}
+
 int main(){
     int a[10]={3,4,7,6,1,2,5,9,8,0};
     //int a[9]={53, 3, 542, 748, 14, 214, 154, 63, 616};
@@ -145,7 +171,8 @@ int main(){
     //shellSort(a,n);
     //radixSort(a,n);
     //mergeSort(a,0,n-1);
-    selectSort(a,n);
+    //selectSort(a,n);
+    quickSort(a,0,n-1);
 
 
     for(int i=0;i<n;++i)
