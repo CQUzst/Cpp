@@ -7,5 +7,5 @@ void main()
 	Mat srcImage2 = imread("1.jpg", 0);
 	imshow("winname", srcImage);
 	imshow("winname2", srcImage2);
-	waitKey(0);
+	//waitKey(0);
 }
